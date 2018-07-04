@@ -1,50 +1,12 @@
-here is the docker compose used to launch the whole stuck for test purpose
-
+To launch and test the whole stack wich is composed by :
+- 2 kafka, 1 zookeeper
+- 1 NGINX (expose ressources)
+- 1 python script who'll watch the file system and notify kafka every x second if there are changes
+You need to run :
 ~~~~
-version: '2'
-services:
-  zookeeper:
-    image: wurstmeister/zookeeper
-    ports:
-      - "2181:2181"
-  kafka:
-    build: .
-    ports:
-      - "9092:9092"
-    environment:
-      KAFKA_ADVERTISED_HOST_NAME: 192.168.99.100
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-  kafka-manager:
-    image: sheepkiller/kafka-manager
-    ports:
-      - "9000:9000"
-    links:
-      - zookeeper:zk
-    environment:
-      ZK_HOSTS: zk:2181
-  inotify-kafka:
-    image: inotify-kafka
-    volumes:
-      - /watched_dir:/watched_dir:ro
-    links:
-      - kafka:kafka
-    environment:
-      WATCHED_ROOT_DIR: '/watched_dir'
-      WEBSERVER_URL: '127.0.0.1:9000'
-      KAFKA_URL: 'kafka:9092'
-      KAFKA_TOPIC: 'sftp'
-  nginx:
-    image: nginx-auth-static
-    volumes:
-      - /data:/watched_dir:ro
-    ports:
-      - "8090:80"
+docker-compose up
 ~~~~
-
-
-here is the nginx server conf
+Here is the nginx server conf
 
     server {
         listen       80;
