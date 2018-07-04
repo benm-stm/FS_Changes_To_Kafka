@@ -1,12 +1,11 @@
-To launch and test the whole stack wich is composed by :
-- 2 kafka, 1 zookeeper
-- 1 NGINX (expose ressources)
-- 1 python script who'll watch the file system and notify kafka every x second if there are changes
-You need to run :
+to launch the stack:
 ~~~~
+mkdir -p /data/exports
+mkdir /data/watched_dir
 docker-compose up
 ~~~~
-Here is the nginx server conf
+
+here is the nginx server conf
 
     server {
         listen       80;
@@ -19,5 +18,7 @@ Here is the nginx server conf
             try_files $uri $uri/ =404;
         }
 
-run consumer :
+to run the kafka consumer to see forwarded jsons to kafka:
+~~~~
 sudo docker-compose exec kafka_1 kafka-console-consumer.sh --bootstrap-server kafka_1:9092 --topic sftp
+~~~~
