@@ -1,0 +1,85 @@
+version: '2'
+services:
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "2181"
+    #healthcheck:
+    #  test: ["CMD-SHELL", "echo ruok | nc -w 2 zookeeper 4444"]
+    #  interval: 5s
+    #  timeout: 10s
+    #  retries: 3
+  kafka_1:
+    #build: .
+    image: wurstmeister/kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: 192.168.99.100
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CREATE_TOPICS: sftp:1:1
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://:9092,OUTSIDE://192.168.99.100:9093
+      KAFKA_LISTENERS: INSIDE://:9092,OUTSIDE://:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  kafka_2:
+    #build: .
+    image: wurstmeister/kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9094:9094"
+      - "9095:9095"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: 192.168.99.100
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CREATE_TOPICS: sftp:1:2
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://:9094,OUTSIDE://192.168.99.100:9095
+      KAFKA_LISTENERS: INSIDE://:9094,OUTSIDE://:9095
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  kafka-manager:
+    image: sheepkiller/kafka-manager
+    ports: 
+      - "9000:9000"
+    links:
+      - zookeeper:zk
+    environment:
+      ZK_HOSTS: zk:2181
+  kafka-fs-notif:
+    build: .
+    depends_on:
+      - kafka_1
+      - kafka_2
+    volumes:
+      - /etc/passwd:/etc/passwd:ro
+      - /data/watched_dir:/watched_dir:ro
+      - /data/exports:/exports:rw
+    links:
+      - kafka_1:kafka_1
+      - kafka_2:kafka_2
+    environment:
+      WATCHED_ROOT_DIR: '/watched_dir'
+      WEBSERVER_URL: '127.0.0.1:8090'
+      KAFKA_URL: 'kafka_1:9092, kafka_2:9094'
+      KAFKA_TOPIC: 'sftp'
+      EXPORT_CSV_PATH: '/exports'
+      KAFKA_PRODUCER_THRESHOLD_TIME: 5
+      KAFKA_INDEX: '-1'
+      KAFKA_JSON_VERSION': '1'
+      KAFKA_EVENT_NAME': 'sftp/files-list/updated'
+
+  nginx:
+    image: nginx-auth-static
+    volumes:
+      - /data:/data:ro
+    ports:
+      - "8090:80"
